@@ -8,15 +8,20 @@ export default async function CardPage() {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (userError || !user) {
+    redirect("/login");
+  }
 
-  const { data: acct, error } = await supabase
+  // Fetch the most recent loyalty account (defensive: no .single())
+  const { data, error } = await supabase
     .from("loyalty_accounts")
-    .select("card_code")
+    .select("card_code, updated_at")
     .eq("user_id", user.id)
-    .single();
+    .order("updated_at", { ascending: false })
+    .limit(1);
 
   if (error) {
     return (
@@ -34,10 +39,30 @@ export default async function CardPage() {
     );
   }
 
+  const acct = data?.[0];
+
+  if (!acct) {
+    return (
+      <div className="p-6">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-2xl font-semibold">My QR Card</h1>
+          <Link className="text-sm underline" href="/app">
+            Back
+          </Link>
+        </div>
+
+        <div className="mt-6 max-w-md rounded-2xl border p-6">
+          <p className="text-sm text-muted-foreground">
+            Your loyalty card is not ready yet. Please refresh the page or contact staff.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const code = acct.card_code;
 
-  // QR encodes the public-safe card code (not UUID).
-  // Keep it simple: just encode the string for scanning.
+  // Generate QR from public-safe card code
   const dataUrl = await qrDataUrl(code);
 
   return (

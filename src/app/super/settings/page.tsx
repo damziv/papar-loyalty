@@ -5,10 +5,10 @@ export default async function SettingsPage() {
   const supabase = await createClient();
 
   const { data: settings, error } = await supabase
-    .from("app_settings")
-    .select("points_per_eur, eur_per_100_points, discount_percent, cashback_percent, updated_at")
-    .eq("id", true)
-    .single();
+  .from("app_settings")
+  .select("points_per_eur, eur_per_100_points, discount_percent, cashback_percent, updated_at")
+  .eq("id", 1)
+  .single();
 
   if (error) {
     return (

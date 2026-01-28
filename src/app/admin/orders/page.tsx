@@ -52,23 +52,41 @@ export default async function AdminOrdersPage() {
 
   let allowedLocationIds: string[] = [];
 
-  if (!isSuperAdmin) {
-    const { data: adminLocs, error: adminLocErr } = await supabase
-  .from("admin_locations")
-  .select("location_id")
-  .eq("admin_user_id", user.id);
+if (!isSuperAdmin) {
+  const { data: adminLocs, error: adminLocErr } = await supabase
+    .from("admin_locations")
+    .select("location_id")
+    .eq("admin_user_id", user.id);
 
   if (adminLocErr) {
     return (
-     <div className="p-6">
+      <div className="p-6">
         <h1 className="text-xl font-semibold">Pending orders</h1>
         <p className="mt-2 text-sm text-red-600">{adminLocErr.message}</p>
-     </div>
-      );
+      </div>
+    );
   }
 
-  
+  allowedLocationIds = Array.from(
+    new Set(
+      (adminLocs ?? [])
+        .map((r: any) => String(r.location_id ?? ""))
+        .filter((x) => isUuid(x))
+    )
+  );
+
+  if (allowedLocationIds.length === 0) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">Pending orders</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          You are an admin but no locations are assigned.
+        </p>
+      </div>
+    );
+  }
 }
+
 
   const { data: locations } = await supabase
     .from("locations")

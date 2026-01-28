@@ -2,6 +2,28 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+function euros(cents: number) {
+  return (cents / 100).toFixed(2);
+}
+
+function formatDate(iso?: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat("hr-HR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v
+  );
+}
+
 export default async function AdminOrdersPage() {
   const supabase = await createClient();
 
@@ -11,20 +33,10 @@ export default async function AdminOrdersPage() {
 
   if (!user) redirect("/login");
 
-  // Roles: allow admin OR super_admin
-  const { data: roles, error: rolesErr } = await supabase
+  const { data: roles } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id);
-
-  if (rolesErr) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-red-600">{rolesErr.message}</p>
-      </div>
-    );
-  }
 
   const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
   const isAdmin = (roles ?? []).some((r) => r.role === "admin");
@@ -33,30 +45,26 @@ export default async function AdminOrdersPage() {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-muted-foreground">You don’t have access to admin.</p>
+        <p className="mt-2 text-sm text-muted-foreground">No access.</p>
       </div>
     );
   }
 
-  // Location scope: only for admins (super_admin can see all)
   let allowedLocationIds: string[] = [];
 
   if (!isSuperAdmin) {
-    const { data: adminLocs, error: adminLocErr } = await supabase
+    const { data: adminLocs } = await supabase
       .from("admin_locations")
       .select("location_id")
       .eq("user_id", user.id);
 
-    if (adminLocErr) {
-      return (
-        <div className="p-6">
-          <h1 className="text-xl font-semibold">Pending orders</h1>
-          <p className="mt-2 text-sm text-red-600">{adminLocErr.message}</p>
-        </div>
-      );
-    }
-
-    allowedLocationIds = Array.from(new Set((adminLocs ?? []).map((r) => r.location_id)));
+    allowedLocationIds = Array.from(
+      new Set(
+        (adminLocs ?? [])
+          .map((r: any) => String(r.location_id ?? ""))
+          .filter((x) => isUuid(x))
+      )
+    );
 
     if (allowedLocationIds.length === 0) {
       return (
@@ -70,40 +78,42 @@ export default async function AdminOrdersPage() {
     }
   }
 
+  const { data: locations } = await supabase
+    .from("locations")
+    .select("id,name");
+
+  const locMap = new Map((locations ?? []).map((l) => [l.id, l.name]));
+
   let query = supabase
     .from("orders")
     .select("id,created_at,location_id,subtotal_cents,total_cents,status")
     .eq("status", "created")
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
 
   if (!isSuperAdmin) {
     query = query.in("location_id", allowedLocationIds);
   }
 
-  const { data: orders, error: ordersErr } = await query;
+  const { data: orders, error } = await query;
 
-  if (ordersErr) {
+  if (error) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-red-600">{ordersErr.message}</p>
+        <p className="mt-2 text-sm text-red-600">{error.message}</p>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">Pending orders</h1>
-        <Link className="text-sm underline" href="/admin">
-          Back
-        </Link>
-      </div>
+      <h1 className="text-2xl font-semibold">Pending orders</h1>
 
       <div className="mt-6 space-y-3">
         {(orders ?? []).length === 0 ? (
-          <div className="rounded-2xl border p-4 text-sm text-muted-foreground">No pending orders.</div>
+          <div className="rounded-2xl border p-4 text-sm text-muted-foreground">
+            No pending orders.
+          </div>
         ) : (
           orders!.map((o) => (
             <Link
@@ -111,12 +121,16 @@ export default async function AdminOrdersPage() {
               href={`/admin/orders/${o.id}`}
               className="block rounded-2xl border p-4 hover:bg-muted/40"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <div className="font-medium">Order #{o.id.slice(0, 8)}</div>
-                <div className="text-sm rounded-full border px-2 py-1">{o.status}</div>
+                <div className="text-sm">{o.status}</div>
               </div>
-              <div className="mt-2 text-sm text-muted-foreground">
-                Location: {String(o.location_id).slice(0, 8)} • Total cents: {o.total_cents}
+              <div className="mt-1 text-sm text-muted-foreground">
+                {locMap.get(o.location_id) ?? o.location_id} •{" "}
+                {formatDate(o.created_at)}
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                €{euros(o.total_cents)}
               </div>
             </Link>
           ))

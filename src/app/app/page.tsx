@@ -19,30 +19,25 @@ export default async function UserHomePage() {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          href="/app/card"
-          className="rounded-2xl border p-4 hover:bg-muted/40"
-        >
-          <div className="text-lg font-semibold">My QR Card</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            Show this at pickup to finalize your order
-          </div>
+        <Link href="/app/menu" className="rounded-2xl border p-4 hover:bg-muted/40">
+          <div className="text-lg font-semibold">Menu</div>
+          <div className="mt-1 text-sm text-muted-foreground">Browse and place an order</div>
         </Link>
 
-        {/* placeholders for next steps */}
-        <div className="rounded-2xl border p-4 opacity-60">
-          <div className="text-lg font-semibold">Menu</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            Coming next: browse & order
-          </div>
-        </div>
+        <Link href="/app/orders" className="rounded-2xl border p-4 hover:bg-muted/40">
+          <div className="text-lg font-semibold">My Orders</div>
+          <div className="mt-1 text-sm text-muted-foreground">Track pickup and totals</div>
+        </Link>
 
-        <div className="rounded-2xl border p-4 opacity-60">
-          <div className="text-lg font-semibold">Orders</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            Coming next: order history
-          </div>
-        </div>
+        <Link href="/app/points" className="rounded-2xl border p-4 hover:bg-muted/40">
+          <div className="text-lg font-semibold">Points</div>
+          <div className="mt-1 text-sm text-muted-foreground">See balance and history</div>
+        </Link>
+
+        <Link href="/app/card" className="rounded-2xl border p-4 hover:bg-muted/40">
+          <div className="text-lg font-semibold">My QR Card</div>
+          <div className="mt-1 text-sm text-muted-foreground">Show at pickup to earn points</div>
+        </Link>
       </div>
     </div>
   );

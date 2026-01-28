@@ -7,11 +7,37 @@ function euros(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v
+  );
+}
+
 export default async function AdminOrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: { id: string } | Promise<{ id: string }>;
 }) {
+  // ✅ Robust params resolution (prevents empty/undefined id issues)
+  const resolved = await Promise.resolve(params as any);
+  const orderId = String(resolved?.id ?? "").trim();
+
+  if (!isUuid(orderId)) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">Order</h1>
+        <p className="mt-2 text-sm text-red-600">
+          Invalid order id in URL: {orderId || "(empty)"}
+        </p>
+        <div className="mt-4">
+          <Link className="underline" href="/admin/orders">
+            Back
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const supabase = await createClient();
 
   const {
@@ -20,7 +46,7 @@ export default async function AdminOrderDetailPage({
 
   if (!user) redirect("/login");
 
-  // Roles (friendly gate; RLS still enforces real security)
+  // Roles
   const { data: roles, error: rolesErr } = await supabase
     .from("user_roles")
     .select("role")
@@ -47,9 +73,7 @@ export default async function AdminOrderDetailPage({
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Order</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You don’t have access.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">You don’t have access.</p>
         <div className="mt-4">
           <Link className="underline" href="/admin/orders">
             Back
@@ -59,7 +83,7 @@ export default async function AdminOrderDetailPage({
     );
   }
 
-  // Allowed locations for admin (super_admin bypass)
+  // Allowed locations for admins (super_admin bypass)
   let allowedLocationIds: string[] = [];
 
   if (!isSuperAdmin) {
@@ -83,7 +107,11 @@ export default async function AdminOrderDetailPage({
     }
 
     allowedLocationIds = Array.from(
-      new Set((adminLocs ?? []).map((r) => r.location_id))
+      new Set(
+        (adminLocs ?? [])
+          .map((r: any) => String(r.location_id ?? ""))
+          .filter((x) => isUuid(x))
+      )
     );
 
     if (allowedLocationIds.length === 0) {
@@ -103,14 +131,10 @@ export default async function AdminOrderDetailPage({
     }
   }
 
-  const orderId = params.id;
-
-  // Fetch order with location scope (important)
+  // Fetch order with location scope
   let orderQuery = supabase
     .from("orders")
-    .select(
-      "id,status,subtotal_cents,discount_cents,total_cents,created_at,location_id,user_id"
-    )
+    .select("id,status,subtotal_cents,discount_cents,total_cents,created_at,location_id,user_id")
     .eq("id", orderId);
 
   if (!isSuperAdmin) {
@@ -149,9 +173,19 @@ export default async function AdminOrderDetailPage({
     );
   }
 
+  // Location name
+  const { data: locationRow } = await supabase
+    .from("locations")
+    .select("name")
+    .eq("id", order.location_id)
+    .maybeSingle();
+
+  const locationName = locationRow?.name ?? String(order.location_id).slice(0, 8);
+
+  // Items with menu names
   const { data: items, error: itemsErr } = await supabase
     .from("order_items")
-    .select("id,quantity,unit_price_cents,line_total_cents,menu_item_id")
+    .select("id,quantity,unit_price_cents,line_total_cents,menu_item_id,menu_items(name)")
     .eq("order_id", orderId);
 
   if (itemsErr) {
@@ -174,7 +208,7 @@ export default async function AdminOrderDetailPage({
         <div>
           <h1 className="text-2xl font-semibold">Order #{order.id.slice(0, 8)}</h1>
           <div className="mt-1 text-sm text-muted-foreground">
-            Status: {order.status} • Location: {String(order.location_id).slice(0, 8)}
+            Status: {order.status} • Location: {locationName}
           </div>
         </div>
         <Link className="text-sm underline" href="/admin/orders">
@@ -187,20 +221,23 @@ export default async function AdminOrderDetailPage({
           <h2 className="text-lg font-semibold">Items</h2>
 
           <div className="mt-4 space-y-2">
-            {(items ?? []).map((it) => (
-              <div
-                key={it.id}
-                className="flex items-center justify-between rounded-xl border p-3 text-sm"
-              >
-                <div>
-                  <div className="font-medium">{String(it.menu_item_id).slice(0, 8)}</div>
-                  <div className="text-muted-foreground">
-                    €{euros(it.unit_price_cents)} × {it.quantity}
+            {(items ?? []).map((it: any) => {
+              const itemName = it.menu_items?.name ?? String(it.menu_item_id).slice(0, 8);
+              return (
+                <div
+                  key={it.id}
+                  className="flex items-center justify-between rounded-xl border p-3 text-sm"
+                >
+                  <div>
+                    <div className="font-medium">{itemName}</div>
+                    <div className="text-muted-foreground">
+                      €{euros(it.unit_price_cents)} × {it.quantity}
+                    </div>
                   </div>
+                  <div className="font-semibold">€{euros(it.line_total_cents)}</div>
                 </div>
-                <div className="font-semibold">€{euros(it.line_total_cents)}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-4 rounded-xl border p-3 text-sm">
@@ -244,9 +281,7 @@ export default async function AdminOrderDetailPage({
           </form>
 
           {order.status !== "created" ? (
-            <div className="mt-3 text-sm text-muted-foreground">
-              This order is already finalized.
-            </div>
+            <div className="mt-3 text-sm text-muted-foreground">This order is already finalized.</div>
           ) : null}
         </div>
       </div>

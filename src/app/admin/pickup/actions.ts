@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function finalizePickup(formData: FormData) {
+export async function finalizeFromPickup(formData: FormData) {
   const orderId = String(formData.get("order_id") ?? "").trim();
   const cardCode = String(formData.get("card_code") ?? "").trim().toLowerCase();
 
@@ -26,10 +26,11 @@ export async function finalizePickup(formData: FormData) {
 
   if (error) throw new Error(`Finalize failed: ${error.message}`);
 
+  revalidatePath("/admin/pickup");
   revalidatePath("/admin/orders");
-  revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/app/orders");
   revalidatePath("/app/points");
 
-  redirect("/admin/orders");
+  // keep them on pickup screen for the next customer
+  redirect(`/admin/pickup?card_code=${encodeURIComponent(cardCode)}&done=1`);
 }

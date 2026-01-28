@@ -87,12 +87,16 @@ export default async function AdminOrdersPage() {
   }
 
   const { data: orders, error } = await query;
+  console.log("ADMIN ORDERS DEBUG", { userId: user.id, allowedLocationIds, error, count: orders?.length });
+
 
   if (error) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-red-600">{error.message}</p>
+        <pre className="mt-2 text-sm text-red-600 whitespace-pre-wrap">
+          {JSON.stringify(error, null, 2)}
+        </pre>
       </div>
     );
   }

@@ -1,0 +1,177 @@
+What we changed/added in the DB (and why)
+1) Menu support
+
+You added tables that let you store meals and structure them:
+
+menu_categories
+Groups like Burgers, Grill, Salads, Drinks.
+
+menu_items
+The actual meals: name, description, base price, active flag, optional image, optional category.
+
+location_menu_items (optional but future-proof)
+Lets you later mark an item unavailable at one location or override its price per location.
+
+✅ Result: Super Admin can maintain a menu, and users can choose items from it.
+
+2) Orders now have line items
+
+You added:
+
+order_items
+Each row is one item in an order:
+
+order_id
+
+menu_item_id
+
+quantity
+
+unit_price_cents (captured at order time)
+
+line_total_cents
+
+✅ Result: An order can be built from menu items and has a proper subtotal.
+
+3) QR-ready “loyalty card” code
+
+You added:
+
+loyalty_accounts.card_code (unique)
+A random public-safe code (hex string) which we can display as QR.
+
+And you backfilled it for existing users.
+
+✅ Result: Every user has a stable QR code that identifies them without exposing UUIDs.
+
+4) Profiles now store email (for admin management)
+
+You added:
+
+profiles.email
+Backfilled from auth.users, and updated the signup trigger so new users get email stored.
+
+✅ Result: Super Admin can promote users by email without needing access to auth.users.
+
+5) Updated the signup trigger
+
+We updated handle_new_user() so that on first login it automatically creates:
+
+profiles (with email)
+
+loyalty_accounts (with card_code)
+
+user_roles = user
+
+✅ Result: Every new user is fully initialized automatically.
+
+6) RLS on new tables
+
+We enabled Row Level Security and added policies so:
+
+Menu is readable by everyone
+
+Menu writes are super_admin only
+
+Order items:
+
+user can read their own items
+
+admin can read order items for orders in their location
+
+user can only insert items for their own pending orders
+
+✅ Result: Security is enforced even if someone tries to call Supabase directly.
+
+7) New RPC: finalize at pickup (scan QR)
+
+You added the key function:
+
+finalize_order_at_pickup(order_id, card_code)
+
+This function:
+
+locks the order (prevents double finalization)
+
+checks the caller is admin for that location
+
+checks the order is still pending (created)
+
+finds user by scanned QR (card_code)
+
+verifies the scanned user is the order owner (anti-fraud)
+
+applies discount from app_settings
+
+marks order completed with final totals
+
+awards points (ledger + balance)
+
+✅ Result: Your exact business flow is now supported in DB:
+pending order → pickup scan → discount + points → completed
+
+What still needs to be done (next steps)
+Step 1 — Build Super Admin menu UI (/super/menu)
+
+Without this, users have nothing to order.
+
+Features:
+
+create categories
+
+create menu items (name, price, category, active)
+
+list & edit items
+
+Step 2 — Show QR code in user app (/app)
+
+Fetch loyalty_accounts.card_code
+
+Render as QR image
+This will be scanned at pickup.
+
+Step 3 — User ordering flow (create pending order)
+
+Pages:
+
+/app/menu browse items
+
+cart (client side)
+
+“Place order” inserts:
+
+orders with status='created' and computed subtotal_cents
+
+order_items rows (with captured unit prices)
+
+Important: totals must be computed server-side or via a safe RPC (recommended).
+
+Step 4 — Admin flow: pending orders list + finalize
+
+Pages:
+
+/admin/orders: list pending orders for admin’s locations
+
+order details: “Scan QR → finalize”
+
+call finalize_order_at_pickup(orderId, card_code)
+
+Step 5 — User sees results
+
+/app/orders: show past orders + discount applied
+
+/app/points: show points_ledger history
+
+Recommended build order (fastest to demo)
+
+/super/menu
+
+/app QR card
+
+/app place order
+
+/admin/orders + finalize with scan
+
+enhance history pages
+
+If you want, I’ll start immediately with /super/menu (tables → server actions → pages) so you can start entering meals today.

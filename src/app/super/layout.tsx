@@ -31,6 +31,9 @@ export default async function SuperLayout({
             <Link className="underline-offset-4 hover:underline" href="/super/locations">
               Locations
             </Link>
+            <Link className="underline-offset-4 hover:underline" href="/super/menu">
+                 Menu
+            </Link>
             <Link className="underline-offset-4 hover:underline" href="/super/settings">
               Settings
             </Link>

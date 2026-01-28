@@ -1,32 +1,49 @@
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export default async function UserAppPage() {
+export default async function UserHomePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
 
-  const { data: loyalty } = await supabase
-    .from("loyalty_accounts")
-    .select("points_balance, level")
-    .eq("user_id", user.id)
-    .single();
-
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-semibold">User Dashboard</h1>
-      <p className="mt-2 text-sm opacity-80">Logged in as: {user.email}</p>
-
-      <div className="mt-6 rounded-2xl border p-4">
-        <div className="text-sm opacity-80">Points</div>
-        <div className="text-3xl font-semibold">{loyalty?.points_balance ?? 0}</div>
-        <div className="mt-1 text-sm opacity-80">Level: {loyalty?.level ?? "base"}</div>
+    <div className="p-6">
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-2xl font-semibold">My Papar Grill</h1>
+        <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
-      <form action="/logout" method="post" className="mt-6">
-        <button className="rounded-xl border px-4 py-2">Logout</button>
-      </form>
-    </main>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          href="/app/card"
+          className="rounded-2xl border p-4 hover:bg-muted/40"
+        >
+          <div className="text-lg font-semibold">My QR Card</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Show this at pickup to finalize your order
+          </div>
+        </Link>
+
+        {/* placeholders for next steps */}
+        <div className="rounded-2xl border p-4 opacity-60">
+          <div className="text-lg font-semibold">Menu</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Coming next: browse & order
+          </div>
+        </div>
+
+        <div className="rounded-2xl border p-4 opacity-60">
+          <div className="text-lg font-semibold">Orders</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Coming next: order history
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

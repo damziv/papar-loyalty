@@ -50,7 +50,7 @@ export default async function AdminOrderDetailPage({
   const { data: roles, error: rolesErr } = await supabase
     .from("user_roles")
     .select("role")
-    .eq("user_id", user.id);
+    .eq("admin_user_id", user.id);
 
   if (rolesErr) {
     return (

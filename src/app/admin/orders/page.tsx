@@ -24,6 +24,21 @@ function isUuid(v: string) {
   );
 }
 
+function statusClasses(status?: string) {
+  switch (status) {
+    case "created":
+      return "bg-amber-50 text-amber-800 border-amber-200";
+    case "ready":
+      return "bg-blue-50 text-blue-800 border-blue-200";
+    case "picked_up":
+      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    case "cancelled":
+      return "bg-rose-50 text-rose-800 border-rose-200";
+    default:
+      return "bg-gray-50 text-gray-700 border-gray-200";
+  }
+}
+
 export default async function AdminOrdersPage() {
   const supabase = await createClient();
 
@@ -43,54 +58,92 @@ export default async function AdminOrdersPage() {
 
   if (!isSuperAdmin && !isAdmin) {
     return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-muted-foreground">No access.</p>
-      </div>
+      <main className="min-h-screen bg-gray-50 px-4 py-6">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex items-end justify-between gap-3">
+            <h1 className="text-xl font-bold tracking-tight">Pending orders</h1>
+            <Link
+              href="/admin"
+              className="text-sm font-medium text-gray-700 underline underline-offset-4 hover:text-black"
+            >
+              Back
+            </Link>
+          </div>
+
+          <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-600">No access.</p>
+          </div>
+        </div>
+      </main>
     );
   }
 
   let allowedLocationIds: string[] = [];
 
-if (!isSuperAdmin) {
-  const { data: adminLocs, error: adminLocErr } = await supabase
-    .from("admin_locations")
-    .select("location_id")
-    .eq("admin_user_id", user.id);
+  if (!isSuperAdmin) {
+    const { data: adminLocs, error: adminLocErr } = await supabase
+      .from("admin_locations")
+      .select("location_id")
+      .eq("admin_user_id", user.id);
 
-  if (adminLocErr) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-red-600">{adminLocErr.message}</p>
-      </div>
+    if (adminLocErr) {
+      return (
+        <main className="min-h-screen bg-gray-50 px-4 py-6">
+          <div className="mx-auto max-w-4xl">
+            <div className="flex items-end justify-between gap-3">
+              <h1 className="text-xl font-bold tracking-tight">Pending orders</h1>
+              <Link
+                href="/admin"
+                className="text-sm font-medium text-gray-700 underline underline-offset-4 hover:text-black"
+              >
+                Back
+              </Link>
+            </div>
+
+            <div className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
+              <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {adminLocErr.message}
+              </p>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
+    allowedLocationIds = Array.from(
+      new Set(
+        (adminLocs ?? [])
+          .map((r: any) => String(r.location_id ?? ""))
+          .filter((x) => isUuid(x))
+      )
     );
+
+    if (allowedLocationIds.length === 0) {
+      return (
+        <main className="min-h-screen bg-gray-50 px-4 py-6">
+          <div className="mx-auto max-w-4xl">
+            <div className="flex items-end justify-between gap-3">
+              <h1 className="text-xl font-bold tracking-tight">Pending orders</h1>
+              <Link
+                href="/admin"
+                className="text-sm font-medium text-gray-700 underline underline-offset-4 hover:text-black"
+              >
+                Back
+              </Link>
+            </div>
+
+            <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-600">
+                You are an admin but no locations are assigned.
+              </p>
+            </div>
+          </div>
+        </main>
+      );
+    }
   }
 
-  allowedLocationIds = Array.from(
-    new Set(
-      (adminLocs ?? [])
-        .map((r: any) => String(r.location_id ?? ""))
-        .filter((x) => isUuid(x))
-    )
-  );
-
-  if (allowedLocationIds.length === 0) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">Pending orders</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You are an admin but no locations are assigned.
-        </p>
-      </div>
-    );
-  }
-}
-
-
-  const { data: locations } = await supabase
-    .from("locations")
-    .select("id,name");
+  const { data: locations } = await supabase.from("locations").select("id,name");
 
   const locMap = new Map((locations ?? []).map((l) => [l.id, l.name]));
 
@@ -105,51 +158,104 @@ if (!isSuperAdmin) {
   }
 
   const { data: orders, error } = await query;
-  console.log("ADMIN ORDERS DEBUG", { userId: user.id, allowedLocationIds, error, count: orders?.length });
-
+  console.log("ADMIN ORDERS DEBUG", {
+    userId: user.id,
+    allowedLocationIds,
+    error,
+    count: orders?.length,
+  });
 
   if (error) {
     return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">Pending orders</h1>
-        <pre className="mt-2 text-sm text-red-600 whitespace-pre-wrap">
-          {JSON.stringify(error, null, 2)}
-        </pre>
-      </div>
+      <main className="min-h-screen bg-gray-50 px-4 py-6">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex items-end justify-between gap-3">
+            <h1 className="text-xl font-bold tracking-tight">Pending orders</h1>
+            <Link
+              href="/admin"
+              className="text-sm font-medium text-gray-700 underline underline-offset-4 hover:text-black"
+            >
+              Back
+            </Link>
+          </div>
+
+          <div className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
+            <pre className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 whitespace-pre-wrap">
+              {JSON.stringify(error, null, 2)}
+            </pre>
+          </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold">Pending orders</h1>
-
-      <div className="mt-6 space-y-3">
-        {(orders ?? []).length === 0 ? (
-          <div className="rounded-2xl border p-4 text-sm text-muted-foreground">
-            No pending orders.
+    <main className="min-h-screen bg-gray-50 px-4 py-6">
+      <div className="mx-auto max-w-4xl">
+        {/* Header */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Pending orders</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Open orders waiting for pickup finalization.
+            </p>
           </div>
-        ) : (
-          orders!.map((o) => (
-            <Link
-              key={o.id}
-              href={`/admin/orders/${o.id}`}
-              className="block rounded-2xl border p-4 hover:bg-muted/40"
-            >
-              <div className="flex justify-between">
-                <div className="font-medium">Order #{o.id.slice(0, 8)}</div>
-                <div className="text-sm">{o.status}</div>
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                {locMap.get(o.location_id) ?? o.location_id} •{" "}
-                {formatDate(o.created_at)}
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                €{euros(o.total_cents)}
-              </div>
-            </Link>
-          ))
-        )}
+
+          <Link
+            href="/admin"
+            className="text-sm font-medium text-gray-700 underline underline-offset-4 hover:text-black"
+          >
+            Back
+          </Link>
+        </div>
+
+        {/* List */}
+        <div className="mt-6 space-y-3">
+          {(orders ?? []).length === 0 ? (
+            <div className="rounded-2xl border bg-white p-6 text-sm text-gray-600 shadow-sm">
+              No pending orders.
+            </div>
+          ) : (
+            orders!.map((o) => (
+              <Link
+                key={o.id}
+                href={`/admin/orders/${o.id}`}
+                className="block rounded-2xl border bg-white p-4 shadow-sm transition
+                           hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-semibold">
+                        Order #{o.id.slice(0, 8)}
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses(
+                          o.status
+                        )}`}
+                      >
+                        {o.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-500">
+                      {locMap.get(o.location_id) ?? o.location_id} •{" "}
+                      {formatDate(o.created_at)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <div className="text-sm text-gray-500">Total</div>
+                    <div className="text-lg font-bold">€{euros(o.total_cents)}</div>
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+
+        <div className="h-8" />
       </div>
-    </div>
+    </main>
   );
 }

@@ -9,47 +9,82 @@ export default async function SuperLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
   const role = await getHighestRole();
   if (role !== "super_admin") redirect("/app");
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm opacity-70">PaparGrill</div>
-            <div className="text-lg font-semibold">Super Admin</div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="border-b bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Brand */}
+            <div className="leading-tight">
+              <div className="text-xs uppercase tracking-wide text-gray-400">
+                PaparGrill
+              </div>
+              <div className="text-lg font-semibold tracking-tight">
+                Super Admin
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex flex-wrap items-center gap-2 text-sm">
+              <Link
+                href="/super"
+                className="rounded-lg px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Overview
+              </Link>
+              <Link
+                href="/super/locations"
+                className="rounded-lg px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Locations
+              </Link>
+              <Link
+                href="/super/menu"
+                className="rounded-lg px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Menu
+              </Link>
+              <Link
+                href="/super/settings"
+                className="rounded-lg px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Settings
+              </Link>
+              <Link
+                href="/super/admins"
+                className="rounded-lg px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Admins
+              </Link>
+
+              <form action="/logout" method="post">
+                <button
+                  type="submit"
+                  className="ml-1 rounded-lg border px-3 py-1.5 text-sm font-medium
+                             hover:bg-gray-100"
+                >
+                  Logout
+                </button>
+              </form>
+            </nav>
           </div>
-
-          <nav className="flex items-center gap-4 text-sm">
-            <Link className="underline-offset-4 hover:underline" href="/super">
-              Overview
-            </Link>
-            <Link className="underline-offset-4 hover:underline" href="/super/locations">
-              Locations
-            </Link>
-            <Link className="underline-offset-4 hover:underline" href="/super/menu">
-                 Menu
-            </Link>
-            <Link className="underline-offset-4 hover:underline" href="/super/settings">
-              Settings
-            </Link>
-            <Link className="underline-offset-4 hover:underline" href="/super/admins">
-                 Admins
-            </Link>
-
-
-            <form action="/logout" method="post">
-              <button className="rounded-xl border px-3 py-1.5">Logout</button>
-            </form>
-          </nav>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      {/* Content */}
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {children}
+      </main>
     </div>
   );
 }

@@ -26,14 +26,26 @@ export default async function UserMenuPage() {
     .select("id,name")
     .order("name");
 
-  if (locErr) return <ErrorBox title="Menu" message={`Failed to load locations: ${locErr.message}`} />;
+  if (locErr)
+    return (
+      <ErrorBox
+        title="Menu"
+        message={`Failed to load locations: ${locErr.message}`}
+      />
+    );
 
   const { data: categories, error: catErr } = await supabase
     .from("menu_categories")
     .select("id,name")
     .order("name");
 
-  if (catErr) return <ErrorBox title="Menu" message={`Failed to load categories: ${catErr.message}`} />;
+  if (catErr)
+    return (
+      <ErrorBox
+        title="Menu"
+        message={`Failed to load categories: ${catErr.message}`}
+      />
+    );
 
   const { data: items, error: itemErr } = await supabase
     .from("menu_items")
@@ -41,31 +53,52 @@ export default async function UserMenuPage() {
     .eq("active", true)
     .order("name");
 
-  if (itemErr) return <ErrorBox title="Menu" message={`Failed to load items: ${itemErr.message}`} />;
+  if (itemErr)
+    return (
+      <ErrorBox
+        title="Menu"
+        message={`Failed to load items: ${itemErr.message}`}
+      />
+    );
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold">Menu</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Add items to cart and place an order for pickup.
-      </p>
+    <main className="min-h-screen bg-gray-50 px-4 py-6">
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <div className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+          <h1 className="text-2xl font-bold tracking-tight">Menu</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Add items to cart and place an order for pickup.
+          </p>
+        </div>
 
-      <div className="mt-6">
-        <CartClient
-          locations={(locations ?? []) as Location[]}
-          categories={(categories ?? []) as Category[]}
-          items={(items ?? []) as MenuItem[]}
-        />
+        {/* Content */}
+        <div className="mt-4 rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+          <CartClient
+            locations={(locations ?? []) as Location[]}
+            categories={(categories ?? []) as Category[]}
+            items={(items ?? []) as MenuItem[]}
+          />
+        </div>
+
+        {/* Small footer spacer for mobile scrolling comfort */}
+        <div className="h-8" />
       </div>
-    </div>
+    </main>
   );
 }
 
 function ErrorBox({ title, message }: { title: string; message: string }) {
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-red-600">{message}</p>
-    </div>
+    <main className="min-h-screen bg-gray-50 px-4 py-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+          <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {message}
+          </p>
+        </div>
+      </div>
+    </main>
   );
 }
